@@ -56,3 +56,9 @@ static/czi_images_detailed/week6/kmc1/week6_kmc1.czi filter=lfs diff=lfs merge=l
 static/czi_images_detailed/week6/kmc1/week6_kmc1.tif filter=lfs diff=lfs merge=lfs -text
 static/czi_images_detailed/week6/kmc3/week6_kmc3.czi filter=lfs diff=lfs merge=lfs -text
 static/czi_images_detailed/week6/kmc3/week6_kmc3.tif filter=lfs diff=lfs merge=lfs -text
+static/overview/healthy[[:space:]]airway/CT[[:space:]]64822[[:space:]]M1[[:space:]]SE555[[:space:]]63x[[:space:]]100um[[:space:]]airway.aivia.tif filter=lfs diff=lfs merge=lfs -text
+static/overview/healthy[[:space:]]airway/overview.czi filter=lfs diff=lfs merge=lfs -text
+static/overview/healthy[[:space:]]arteriole/CT[[:space:]]64822[[:space:]]M1[[:space:]]SE555[[:space:]]63x[[:space:]]100um[[:space:]]artery.aivia.tif filter=lfs diff=lfs merge=lfs -text
+static/overview/healthy[[:space:]]arteriole/overview.czi filter=lfs diff=lfs merge=lfs -text
+static/overview/healthy[[:space:]]venule/CT[[:space:]]64822[[:space:]]M1[[:space:]]SE555[[:space:]]63x[[:space:]]100um[[:space:]]vein.aivia.tif filter=lfs diff=lfs merge=lfs -text
+static/overview/healthy[[:space:]]venule/overview.czi filter=lfs diff=lfs merge=lfs -text
