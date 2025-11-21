@@ -1,0 +1,7 @@
+flask
+aicspylibczi
+opencv-python
+matplotlib
+czifile
+scipy
+#install with pip install -r requirements.txt
