@@ -1,0 +1,197 @@
+
+/* ================================================================= */
+/* Base page layout                                                  */
+/* ================================================================= */
+body {
+  margin: 0;
+  padding: 0.5rem;
+  text-align: left;
+}
+.week {
+  margin: 1.5rem 0;
+  padding: 0;
+}
+.images {
+  display: flex;
+  gap: 0.1rem;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+}
+.thumb-box {
+  flex: 0 0 350px;
+  width: 350px; height: 350px;
+  overflow: hidden;
+  background: transparent;
+  position: relative;
+}
+.thumb-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.thumb-box .thumb-label {
+  position: absolute;
+  left: 95px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+  z-index: 10;
+  line-height: 1.1;
+}
+.thumb-label.kmc1 {
+  color: teal;
+  bottom: 32px;
+}
+.thumb-label.kmc2 {
+  color: hotpink;
+  bottom: 20px;
+}
+.thumb-label.kmc3 {
+  color: gold;
+  bottom: 8px;
+}
+.viewer-and-heatmaps {
+  display: flex;
+  gap: 0.1rem;
+  align-items: flex-start;
+}
+.viewer-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.viewer {
+  position: relative;
+  flex: 0 0 420px;
+  width: 420px; height: 420px;
+  background: #000;
+  overflow: hidden;
+}
+.viewer .chan-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+.chan-img{
+  image-rendering: pixelated;
+  /* for wider support: */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
+  transform-origin: center center;
+}
+
+/* Make sure [hidden] actually hides things */
+[hidden] {
+  display: none !important;
+}
+
+/* Container for the three heatmaps (side-by-side) */
+.heatmaps {
+  display: flex !important;          /* Use flex instead of inline-flex for better control */
+  gap: 2px !important;               /* Minimal gap between heatmaps */
+  margin: 0;
+  padding: 0;
+  flex-wrap: nowrap !important;      /* Prevent wrapping to next line */
+  align-items: flex-start !important; /* Align items to top */
+}
+
+/* Each figure: zero margins/padding, only show when not hidden */
+.heatmaps > .heatmap {
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;         /* Prevent shrinking */
+  width: 200px !important;           /* Fixed width */
+}
+
+/* Hide heatmap figures that contain hidden images */
+.heatmaps > .heatmap:has(img[hidden]) {
+  display: none !important;
+}
+
+/* The <img> itself: block so no inline whitespace, fixed width */
+.heatmaps > .heatmap > img.heatmap-img {
+  display: block;
+  width: 200px;     /* or whatever size you prefer */
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  image-rendering: pixelated;
+  /* for wider support: */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
+  transform-origin: center center;
+}
+
+/* Caption: hidden until its image is shown */
+.heatmaps > .heatmap > figcaption {
+  display: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+  color: #000;
+  text-align: center;
+}
+
+/* Reveal the caption only when its preceding <img> is un-hidden */
+.heatmaps > .heatmap > img.heatmap-img:not([hidden]) + figcaption {
+  display: block;
+}
+
+/* Rotate Week 6 images 30° CCW */
+.rotate-w6 {
+  transform: rotate(-30deg);
+  transform-origin: center center;
+  /* keep nearest-neighbor sampling so you don’t lose intensity: */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
+}
+.detailed-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1rem;
+}
+
+.slider-block {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+
+.slider-block h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.slider-container {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.z-slider {
+  flex: 1;
+  max-width: 300px;
+}
+
+.z-value {
+  min-width: 30px;
+  font-weight: bold;
+  color: #666;
+}
+
