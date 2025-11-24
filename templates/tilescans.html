@@ -1,0 +1,747 @@
+<style>
+    /* Popup window for download options */
+    .download-popup {
+      position: absolute;
+      background: #fff;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.13);
+      padding: 1rem 1.5rem 1rem 1.5rem;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 180px;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 60px;
+    }
+    .download-popup button {
+      width: 100%;
+      padding: 0.5rem 0;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #bbb;
+      background: #f5f5f5;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .download-popup button:hover {
+      background: #e0e0e0;
+    }
+    .download-popup .close-btn {
+      background: #eee;
+      color: #888;
+      border: none;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    .download-image-btn {
+      background: #f39c12;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-left: 0.5rem;
+      white-space: nowrap;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    }
+    .download-image-btn:hover {
+      background: #e67e22;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.download-image-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          // Remove any existing popups
+          document.querySelectorAll('.download-popup').forEach(p => p.remove());
+          // Create popup
+          const week = btn.getAttribute('data-week');
+          const popup = document.createElement('div');
+          popup.className = 'download-popup';
+          popup.innerHTML = `
+            <button onclick=\"window.location='/download/main/week${week}'\">Download CZI</button>
+            <button onclick=\"window.location='/download/main/weektif${week}'\">Download TIFF</button>
+            <button class='close-btn'>Cancel</button>
+          `;
+          // Position popup
+          btn.parentElement.style.position = 'relative';
+          btn.parentElement.appendChild(popup);
+          popup.style.display = 'flex';
+          // Close logic
+          popup.querySelector('.close-btn').onclick = function() {
+            popup.remove();
+          };
+          // Click outside closes
+          setTimeout(() => {
+            document.addEventListener('mousedown', function handler(ev) {
+              if (!popup.contains(ev.target) && ev.target !== btn) {
+                popup.remove();
+                document.removeEventListener('mousedown', handler);
+              }
+            });
+          }, 10);
+        });
+      });
+    });
+  </script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lung Fibrosis</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* Main layout container for thumbnails, viewers, and heatmaps */
+    .images {
+      display: flex;
+      gap: 1px;
+      align-items: flex-start;
+      margin: 0;
+      padding: 0;
+    }
+    .kmc-description-img {
+      display: block;
+      margin: 2rem auto 1.5rem auto;
+      max-width: 600px;
+      width: 90%;
+    }
+    
+    /* Interactive channel viewer styling */
+    .viewer {
+      position: relative;
+      background: #000;
+    }
+    
+    .viewer .chan-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      mix-blend-mode: screen; /* Blending mode for overlaying channels */
+    }
+    
+    /* Channel visibility control */
+    .viewer .chan-img.visible {
+      opacity: 1;
+    }
+    
+    /* Individual channel blending modes for optimal visualization */
+    .viewer .chan-img[data-chan="1"] { /* Everything channel */
+      mix-blend-mode: screen;
+    }
+    .viewer .chan-img[data-chan="2"] { /* GFP channel */
+      mix-blend-mode: screen;
+    }
+    .viewer .chan-img[data-chan="3"] { /* aSMA channel */
+      mix-blend-mode: screen;
+    }
+    .viewer .chan-img[data-chan="4"] { /* DAPI channel */
+      mix-blend-mode: screen;
+    }
+    
+    /* Week 2 image adjustments for better viewing */
+    #viewer-2 .chan-img {
+      transform: rotate(15deg) scale(1.25);
+      transform-origin: center center;
+    }
+    
+    /* Week 6 image adjustments for better viewing */
+    #viewer-6 .chan-img {
+      transform: rotate(10deg) scale(1.2);
+      transform-origin: center center;
+    }
+    
+    /* Week 1 image enlargement while keeping container size */
+    #viewer-1 .chan-img {
+      object-fit: cover;
+      transform: scale(1.2);
+      transform-origin: center center;
+    }
+    
+    /* Week 0 image reduction while keeping container size */
+    #viewer-0 .chan-img {
+      object-fit: contain;
+      transform: scale(0.8);
+      transform-origin: center center;
+    }
+    
+    /* Custom styled checkboxes for channel selection */
+    .channel-cbx {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      margin-right: 4px;
+      position: relative;
+      cursor: pointer;
+      background-color: #ffffff;
+      border: 2px solid #000000;
+    }
+    
+    .channel-cbx:checked::after {
+      content: '✓';
+      position: absolute;
+      top: -4px;
+      left: 0px;
+      color: black;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    
+    /* Channel label styling with transparent backgrounds */
+    label:has(.channel-cbx) {
+      background-color: transparent;
+      padding: 1px 2px;
+      border-radius: 2px;
+      margin: 0px 1px;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    }
+    
+    /* Color coding for different channel types */
+    .channel-cbx[data-chan="1"] + span,
+    label:has(.channel-cbx[data-chan="1"]) {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .channel-cbx[data-chan="2"] + span,
+    label:has(.channel-cbx[data-chan="2"]) {
+      color: #51cf66;
+      font-weight: 600;
+    }
+    .channel-cbx[data-chan="3"] + span,
+    label:has(.channel-cbx[data-chan="3"]) {
+      color: #ff0000;
+      font-weight: 600;
+    }
+    .channel-cbx[data-chan="4"] + span,
+    label:has(.channel-cbx[data-chan="4"]) {
+      color: #339af0;
+      font-weight: 600;
+    }
+    /* Thumbnail container styling */
+    .thumb-box {
+      flex: 0 0 240px;
+      width: 240px; 
+      height: 470px;
+      overflow: visible;
+      background: transparent;
+      position: relative;
+      margin: 0;
+      padding: 0;
+    }
+    .thumb-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    
+    /* Week 0 thumbnail size adjustment */
+    .week:first-of-type .thumb-box img {
+      transform: scale(0.8);
+      transform-origin: center center;
+    }
+    
+    /* Black background frame for Week 0 thumbnail */
+    .week:first-of-type .thumb-box::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: -1;
+      border-radius: 4px;
+    }
+    
+    /* Week 1 thumbnail maintains original size */
+    .week:nth-of-type(2) .thumb-box img {
+      transform: scale(1);
+      transform-origin: center center;
+    }
+    
+    /* Labels positioned over thumbnail images */
+    .thumb-box .thumb-label {
+      position: absolute;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      z-index: 10;
+      line-height: 1.1;
+    }
+    .thumb-label.kmc1 {
+      color: teal;
+      top: 400px;
+      left: 180px;
+    }
+    .thumb-label.kmc2 {
+      color: hotpink;
+      top: 420px;
+      left: 180px;
+    }
+    .thumb-label.kmc3 {
+      color: gold;
+      top: 440px;
+      left: 180px;
+    }
+    /* Main content area layout */
+    .viewer-and-heatmaps {
+      display: flex;
+      gap: 1px;
+      align-items: flex-start;
+      flex: 1;
+      min-width: 0;
+    }
+    /* Viewer and controls arrangement */
+    .viewer-column {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    /* Control panel styling */
+    .controls {
+      display: flex;
+      flex-direction: row;
+      gap: 0.2rem;
+      background-color: #2a2a2a;
+      padding: 0.8rem 0.4rem;
+      border-radius: 6px;
+      align-items: center;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 0.1rem;
+      width: 97%;
+      justify-content: flex-start;
+      margin-left: 0;
+    }
+    
+    /* Checkbox group layout */
+    .channel-row {
+      display: flex;
+      gap: 0.15rem;
+      align-items: center;
+      justify-content: flex-start;
+      margin-right: 0.15rem;
+    }
+    
+    /* Download button with blue theme */
+    .tilescans .download-image-btn {
+      background: #007acc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      margin-left: 0.1rem;
+    }
+    
+    .tilescans .download-image-btn:hover {
+      background: #005a9e;
+    }
+    /* Heatmap display arrangement */
+    .heatmaps {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      flex-wrap: nowrap;
+      min-width: 0;
+      flex: 1;
+    }
+    .heatmap {
+      display: none;  /* Initially hidden, shown when channels are selected */
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 1rem;
+      width: 250px;
+      min-width: 250px;
+      flex-shrink: 0;
+      height: 470px; /* Matches thumbnail height */
+      background-color: rgb(0, 0, 131);
+      border-radius: 8px;
+      position: relative;
+    }
+    
+    .heatmap-background {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      width: 100%;
+      height: 470px; /* Matches thumbnail height */
+      background-color: rgb(0, 0, 131);
+      border-radius: 8px;
+    }
+    
+    .heatmap img {
+      max-width: 100%;
+      max-height: 380px; /* Space reserved for caption */
+      height: auto;
+      width: auto;
+      border: 2px solid #fff;
+      border-radius: 4px;
+      display: block;
+      object-fit: contain;
+    }
+    .heatmap figcaption {
+      position: absolute;
+      bottom: -2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1rem;
+      color: #333;
+      text-align: center;
+      font-weight: 600;
+      text-shadow: none;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="tilescans">
+  <h1 style="margin-bottom: 0.5rem;">Tilescans</h1>
+  <div style="text-align: left; margin-bottom: 2rem; position: relative; display: inline-block; margin-left: 24px;">
+    <img src="/static/overview/kmc_description.png" alt="KMC Description" class="kmc-description-img" style="max-width: 1100px; width: 90vw; min-width: 350px; display: block;">
+    <img src="/static/overview/kmc_gif.gif" alt="KMC Animation" style="position: absolute; top: 160px; right: 280px; max-width: 300px; width: 20vw; min-width: 150px; z-index: 10;">
+  </div>
+
+  <!-- Week 0 -->
+  <section class="week">
+    <h2>Week 0</h2>
+    <div class="images">
+      <div class="thumb-box">
+        <img src="/static/thumbnails/week0.png" alt="Week 0 thumbnail">
+        <div class="thumb-label kmc1">KMC 1</div>
+        <div class="thumb-label kmc2">KMC 2</div>
+        <div class="thumb-label kmc3">KMC 3</div>
+      </div>
+      <div class="viewer-and-heatmaps">
+        <!-- Viewer + checkboxes -->
+        <div class="viewer-column">
+          <div class="viewer" id="viewer-0">
+            <img src="/static/processed/week0_channel1.png" data-week="0" data-chan="1" class="chan-img" alt="Week 0 Everything channel">
+            <img src="/static/processed/week0_channel2.png" data-week="0" data-chan="2" class="chan-img" alt="Week 0 GFP channel">
+            <img src="/static/processed/week0_channel3.png" data-week="0" data-chan="3" class="chan-img" alt="Week 0 aSMA channel">
+            <img src="/static/processed/week0_channel4.png" data-week="0" data-chan="4" class="chan-img" alt="Week 0 DAPI channel">
+          </div>
+          <div class="controls">
+            <div class="channel-row">
+              <label><input type="checkbox" class="channel-cbx" data-week="0" data-chan="1"> Everything</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="0" data-chan="2"> GFP</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="0" data-chan="3"> aSMA</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="0" data-chan="4"> DAPI</label>
+            </div>
+            <button class="download-image-btn" data-week="0">Download</button>
+          </div>
+        </div>
+        <!-- Heatmaps -->
+        <div class="heatmaps" id="heatmaps-0">
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week0_gfp_heatmap.png" data-week="0" data-chan="2" class="heatmap-img" alt="Week 0 GFP heatmap">
+            <figcaption>GFP</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week0_asma_heatmap.png" data-week="0" data-chan="3" class="heatmap-img" alt="Week 0 aSMA heatmap">
+            <figcaption>aSMA</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week0_dapi_heatmap.png" data-week="0" data-chan="4" class="heatmap-img" alt="Week 0 DAPI heatmap">
+            <figcaption>DAPI</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Week 1 -->
+  <section class="week">
+    <h2>Week 1</h2>
+    <div class="images">
+      <div class="thumb-box">
+        <img src="/static/thumbnails/week1.png" alt="Week 1 thumbnail">
+      </div>
+      <div class="viewer-and-heatmaps">
+        <div class="viewer-column">
+          <div class="viewer" id="viewer-1">
+            <img src="/static/processed/week1_channel1.png" data-week="1" data-chan="1" class="chan-img" alt="Week 1 Everything channel">
+            <img src="/static/processed/week1_channel2.png" data-week="1" data-chan="2" class="chan-img" alt="Week 1 GFP channel">
+            <img src="/static/processed/week1_channel3.png" data-week="1" data-chan="3" class="chan-img" alt="Week 1 aSMA channel">
+            <img src="/static/processed/week1_channel4.png" data-week="1" data-chan="4" class="chan-img" alt="Week 1 DAPI channel">
+          </div>
+          <div class="controls">
+            <div class="channel-row">
+              <label><input type="checkbox" class="channel-cbx" data-week="1" data-chan="1"> Everything</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="1" data-chan="2"> GFP</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="1" data-chan="3"> aSMA</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="1" data-chan="4"> DAPI</label>
+            </div>
+            <button class="download-image-btn" data-week="1">Download</button>
+          </div>
+        </div>
+        <div class="heatmaps" id="heatmaps-1">
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week1_gfp_heatmap.png" data-week="1" data-chan="2" class="heatmap-img" alt="Week 1 GFP heatmap">
+            <figcaption>GFP</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week1_asma_heatmap.png" data-week="1" data-chan="3" class="heatmap-img" alt="Week 1 aSMA heatmap">
+            <figcaption>aSMA</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week1_dapi_heatmap.png" data-week="1" data-chan="4" class="heatmap-img" alt="Week 1 DAPI heatmap">
+            <figcaption>DAPI</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Week 2 -->
+  <section class="week">
+    <h2>Week 2</h2>
+    <div class="images">
+      <div class="thumb-box">
+        <img src="/static/thumbnails/week2.png" alt="Week 2 thumbnail">
+      </div>
+      <div class="viewer-and-heatmaps">
+        <div class="viewer-column">
+          <div class="viewer" id="viewer-2">
+            <img src="/static/processed/week2_channel1.png" data-week="2" data-chan="1" class="chan-img" alt="Week 2 Everything channel">
+            <img src="/static/processed/week2_channel2.png" data-week="2" data-chan="2" class="chan-img" alt="Week 2 GFP channel">
+            <img src="/static/processed/week2_channel3.png" data-week="2" data-chan="3" class="chan-img" alt="Week 2 aSMA channel">
+            <img src="/static/processed/week2_channel4.png" data-week="2" data-chan="4" class="chan-img" alt="Week 2 DAPI channel">
+          </div>
+          <div class="controls">
+            <div class="channel-row">
+              <label><input type="checkbox" class="channel-cbx" data-week="2" data-chan="1"> Everything</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="2" data-chan="2"> GFP</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="2" data-chan="3"> aSMA</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="2" data-chan="4"> DAPI</label>
+            </div>
+            <button class="download-image-btn" data-week="2">Download</button>
+          </div>
+        </div>
+        <div class="heatmaps" id="heatmaps-2">
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week2_gfp_heatmap.png" data-week="2" data-chan="2" class="heatmap-img" alt="Week 2 GFP heatmap">
+            <figcaption>GFP</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week2_asma_heatmap.png" data-week="2" data-chan="3" class="heatmap-img" alt="Week 2 aSMA heatmap">
+            <figcaption>aSMA</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week2_dapi_heatmap.png" data-week="2" data-chan="4" class="heatmap-img" alt="Week 2 DAPI heatmap">
+            <figcaption>DAPI</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Week 3 -->
+  <section class="week">
+    <h2>Week 3</h2>
+    <div class="images">
+      <div class="thumb-box">
+        <img src="/static/thumbnails/week3.png" alt="Week 3 thumbnail">
+      </div>
+      <div class="viewer-and-heatmaps">
+        <div class="viewer-column">
+          <div class="viewer" id="viewer-3">
+            <img src="/static/processed/week3_channel1.png" data-week="3" data-chan="1" class="chan-img" alt="Week 3 Everything channel">
+            <img src="/static/processed/week3_channel2.png" data-week="3" data-chan="2" class="chan-img" alt="Week 3 GFP channel">
+            <img src="/static/processed/week3_channel3.png" data-week="3" data-chan="3" class="chan-img" alt="Week 3 aSMA channel">
+            <img src="/static/processed/week3_channel4.png" data-week="3" data-chan="4" class="chan-img" alt="Week 3 DAPI channel">
+          </div>
+          <div class="controls">
+            <div class="channel-row">
+              <label><input type="checkbox" class="channel-cbx" data-week="3" data-chan="1"> Everything</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="3" data-chan="2"> GFP</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="3" data-chan="3"> aSMA</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="3" data-chan="4"> DAPI</label>
+            </div>
+            <button class="download-image-btn" data-week="3">Download</button>
+          </div>
+        </div>
+        <div class="heatmaps" id="heatmaps-3">
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week3_gfp_heatmap.png" data-week="3" data-chan="2" class="heatmap-img" alt="Week 3 GFP heatmap">
+            <figcaption>GFP</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week3_asma_heatmap.png" data-week="3" data-chan="3" class="heatmap-img" alt="Week 3 aSMA heatmap">
+            <figcaption>aSMA</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week3_dapi_heatmap.png" data-week="3" data-chan="4" class="heatmap-img" alt="Week 3 DAPI heatmap">
+            <figcaption>DAPI</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Week 6 -->
+  <section class="week">
+    <h2>Week 6</h2>
+    <div class="images">
+      <div class="thumb-box">
+        <img src="/static/thumbnails/week6.png" alt="Week 6 thumbnail">
+      </div>
+      <div class="viewer-and-heatmaps">
+        <div class="viewer-column">
+          <div class="viewer" id="viewer-6">
+            <img src="/static/processed/week6_channel1.png" data-week="6" data-chan="1" class="chan-img" alt="Week 6 Everything channel">
+            <img src="/static/processed/week6_channel2.png" data-week="6" data-chan="2" class="chan-img" alt="Week 6 GFP channel">
+            <img src="/static/processed/week6_channel3.png" data-week="6" data-chan="3" class="chan-img" alt="Week 6 aSMA channel">
+            <img src="/static/processed/week6_channel4.png" data-week="6" data-chan="4" class="chan-img" alt="Week 6 DAPI channel">
+          </div>
+          <div class="controls">
+            <div class="channel-row">
+              <label><input type="checkbox" class="channel-cbx" data-week="6" data-chan="1"> Everything</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="6" data-chan="2"> GFP</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="6" data-chan="3"> aSMA</label>
+              <label><input type="checkbox" class="channel-cbx" data-week="6" data-chan="4"> DAPI</label>
+            </div>
+            <button class="download-image-btn" data-week="6">Download</button>
+          </div>
+        </div>
+        <div class="heatmaps" id="heatmaps-6">
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week6_gfp_heatmap.png" data-week="6" data-chan="2" class="heatmap-img" alt="Week 6 GFP heatmap">
+            <figcaption>GFP</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week6_asma_heatmap.png" data-week="6" data-chan="3" class="heatmap-img" alt="Week 6 aSMA heatmap">
+            <figcaption>aSMA</figcaption>
+          </figure>
+          <figure class="heatmap">
+            <img src="/static/heatmaps/week6_dapi_heatmap.png" data-week="6" data-chan="4" class="heatmap-img" alt="Week 6 DAPI heatmap">
+            <figcaption>DAPI</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <a href="/" class="back-button">
+    <span class="arrow">←</span>
+    Back to Main Menu
+  </a>
+
+</body>
+<script>
+// Interactive functionality for the tilescans page
+document.addEventListener('DOMContentLoaded', function() {
+  
+  // Toggle channel visibility when checkboxes are clicked
+  document.querySelectorAll('.channel-cbx').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const week = this.getAttribute('data-week');
+      const chan = this.getAttribute('data-chan');
+      
+      // Find the corresponding viewer and image
+      const viewer = document.querySelector(`#viewer-${week}`);
+      if (!viewer) return;
+      
+      const channelImg = viewer.querySelector(`img[data-chan="${chan}"]`);
+      if (!channelImg) return;
+      
+      // Toggle image visibility based on checkbox state
+      if (this.checked) {
+        channelImg.classList.add('visible');
+      } else {
+        channelImg.classList.remove('visible');
+      }
+    });
+  });
+  
+  // Show or hide heatmaps based on channel selection
+  document.querySelectorAll('.channel-cbx').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const week = this.getAttribute('data-week');
+      const chan = this.getAttribute('data-chan');
+      
+      // Find corresponding heatmap
+      const heatmapContainer = document.querySelector(`#heatmaps-${week}`);
+      if (!heatmapContainer) return;
+      
+      const heatmapImg = heatmapContainer.querySelector(`img[data-chan="${chan}"]`);
+      if (!heatmapImg) return;
+      
+      // Control heatmap visibility
+      if (this.checked) {
+        heatmapImg.hidden = false;
+        heatmapImg.parentElement.style.display = 'flex';
+      } else {
+        heatmapImg.hidden = true;
+        heatmapImg.parentElement.style.display = 'none';
+      }
+    });
+  });
+
+  // Download popup functionality
+  document.querySelectorAll('.download-image-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      // Clear any existing popups first
+      document.querySelectorAll('.download-popup').forEach(p => p.remove());
+      
+      const week = btn.getAttribute('data-week');
+      const popup = document.createElement('div');
+      popup.className = 'download-popup';
+      popup.innerHTML = `
+        <button onclick="window.location='/download/week${week}'">Download CZI</button>
+        <button onclick="window.location='/download/weektif${week}'">Download TIFF</button>
+        <button class='close-btn'>Cancel</button>
+      `;
+      
+      // Position and show the popup
+      btn.parentElement.style.position = 'relative';
+      btn.parentElement.appendChild(popup);
+      popup.style.display = 'flex';
+      
+      // Close popup when cancel is clicked
+      popup.querySelector('.close-btn').onclick = function() {
+        popup.remove();
+      };
+      
+      // Close popup when clicking outside
+      setTimeout(() => {
+        document.addEventListener('mousedown', function handler(ev) {
+          if (!popup.contains(ev.target) && ev.target !== btn) {
+            popup.remove();
+            document.removeEventListener('mousedown', handler);
+          }
+        });
+      }, 100);
+    });
+  });
+  
+});
+</script>
+</html>

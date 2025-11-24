@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Week {{ week }} Detail</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='js/viewer_detail.js') }}" defer></script>
+  <style>
+    .week-detail-section {
+      margin: 3rem 0;
+      padding: 2rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .week-detail-section h2 {
+      margin-top: 0;
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 0.5rem;
+    }
+    .viewer-container {
+      display: flex;
+      gap: 2rem;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+    .viewer-item {
+      flex: 1;
+      min-width: 300px;
+      max-width: 400px;
+    }
+    .viewer-item h3 {
+      margin-bottom: 1rem;
+      color: #34495e;
+    }
+    .czi-viewer {
+      width: 100%;
+      height: 400px;
+      background: #000;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      position: relative;
+    }
+    .czi-viewer .chan-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.1s ease-out;
+      mix-blend-mode: screen;
+      will-change: opacity;
+    }
+    .czi-viewer .chan-img.visible {
+      opacity: 1;
+    }
+    .png-viewer {
+      width: 100%;
+      height: 400px;
+      background: #000000;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .png-viewer img {
+      height: 350px;
+      width: auto;
+      object-fit: contain;
+      max-width: 100%;
+    }
+    .video-viewer {
+      width: 100%;
+      height: 400px;
+      background: #000000;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-viewer video {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .viewer-controls {
+      display: flex;
+      flex-direction: row;
+      gap: 0.2rem;
+      background-color: #2a2a2a;
+      padding: 0.4rem 0.4rem;
+      border-radius: 6px;
+      align-items: center;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 0.1rem;
+      justify-content: flex-start;
+      margin-left: 0;
+    }
+    
+    /* Channel checkboxes container */
+    .channel-row {
+      display: flex;
+      gap: 0.15rem;
+      align-items: center;
+      justify-content: flex-start;
+      margin-right: 0.15rem;
+    }
+    
+    /* Channel label containers with transparent backgrounds */
+    label:has(.channel-cbx) {
+      background-color: transparent;
+      padding: 1px 2px;
+      border-radius: 2px;
+      margin: 0px 1px;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+    }
+    .channel-cbx {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      margin-right: 4px;
+      position: relative;
+      cursor: pointer;
+      background-color: #ffffff;
+      border: 2px solid #000000;
+    }
+    .channel-cbx:checked::after {
+      content: '✓';
+      position: absolute;
+      top: -4px;
+      left: 0px;
+      color: black;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    .channel-cbx[data-chan="1"] + span,
+    label:has(.channel-cbx[data-chan="1"]) {
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .channel-cbx[data-chan="2"] + span,
+    label:has(.channel-cbx[data-chan="2"]) {
+      color: #51cf66;
+      font-weight: 600;
+    }
+    .channel-cbx[data-chan="3"] + span,
+    label:has(.channel-cbx[data-chan="3"]) {
+      color: #ff0000;
+      font-weight: 600;
+    }
+    .channel-cbx[data-chan="4"] + span,
+    label:has(.channel-cbx[data-chan="4"]) {
+      color: #339af0;
+      font-weight: 600;
+    }
+        .download-popup {
+      position: absolute;
+      background: #fff;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.13);
+      padding: 1rem 1.5rem 1rem 1.5rem;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-width: 180px;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 60px;
+    }
+    .download-popup button {
+      width: 100%;
+      padding: 0.5rem 0;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #bbb;
+      background: #f5f5f5;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .download-popup button:hover {
+      background: #e0e0e0;
+    }
+    .download-popup .close-btn {
+      background: #eee;
+      color: #888;
+      border: none;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    .download-image-btn {
+      background: #007acc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      margin-left: 0.1rem;
+    }
+    .download-image-btn:hover {
+      background: #005a9e;
+    }
+    .png-viewer-btn {
+      background: #f0f0f0;
+      color: #333;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      font-family: 'Inter', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+    }
+    .png-viewer-btn:hover {
+      background: #e0e0e0;
+      border-color: #999;
+    }
+    .png-viewer-btn.active {
+      background: #007acc;
+      color: #fff;
+      border-color: #005a9e;
+    }
+    .png-viewer-btn.active:hover {
+      background: #005a9e;
+    }
+
+    .z-slider {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+    .z-slider input[type="range"] {
+      width: 100%;
+      margin: 0.5rem 0;
+    }
+    .z-slider-label {
+      font-weight: 500;
+      color: #2c3e50;
+    }
+    .back-button {
+      display: inline-block;
+      margin: 1rem 0;
+      padding: 0.5rem 1rem;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .back-button:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Week {{ week }} — Detailed View</h1>
+
+  {% if week == 0 %}
+  <!-- Week 0 Special Section -->
+  <section class="week-detail-section">
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-week0">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="week0" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="week0" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="week0" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="week0" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('week0')" data-week="0" list-num="" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-week0">50</span></label>
+          <input type="range" id="z-slider-week0" min="1" max="101" value="50" data-section="week0">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-week0" src="/static/3d_images/week0/merged/merged.png" alt="Week 0 Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="week0" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="week0" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="week0" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/videos/week0/week0.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% else %}
+  <!-- Week 1+ Sections (KMC 1, 2, 3 + Healthy/Fibrotic) -->
+  <section class="week-detail-section">
+    <h2>KMC 1</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-kmc1">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc1" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc1" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc1" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc1" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('kmc1')"data-week={{week}} list-num="kmc1" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-kmc1">50</span></label>
+          <input type="range" id="z-slider-kmc1" min="1" max="101" value="50" data-section="kmc1">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-kmc1" src="/static/3d_images/week{{ week }}/kmc1/merged/merged.png" alt="KMC 1 Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="kmc1" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="kmc1" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="kmc1" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/videos/week{{ week }}/kmc1/week{{ week }}_kmc1.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KMC 2 Section -->
+  <section class="week-detail-section">
+    <h2>KMC 2</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-kmc2">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc2" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc2" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc2" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc2" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('kmc2')"data-week={{week}} list-num="kmc2" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-kmc2">50</span></label>
+          <input type="range" id="z-slider-kmc2" min="1" max="101" value="50" data-section="kmc2">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-kmc2" src="/static/3d_images/week{{ week }}/kmc2/merged/merged.png" alt="KMC 2 Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="kmc2" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="kmc2" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="kmc2" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/videos/week{{ week }}/kmc2/week{{ week }}_kmc2.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KMC 3 Section -->
+  <section class="week-detail-section">
+    <h2>KMC 3</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-kmc3">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc3" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc3" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc3" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="kmc3" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('kmc3')"data-week={{week}} list-num="kmc3" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-kmc3">50</span></label>
+          <input type="range" id="z-slider-kmc3" min="1" max="101" value="50" data-section="kmc3">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-kmc3" src="/static/3d_images/week{{ week }}/kmc3/merged/merged.png" alt="KMC 3 Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="kmc3" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="kmc3" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="kmc3" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/videos/week{{ week }}/kmc3/week{{ week }}_kmc3.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if week in [1, 2, 3, 6] %}
+  <!-- Healthy Venule Section -->
+  <section class="week-detail-section">
+    <h2>Healthy Venule</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-healthy-venule">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-venule" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-venule" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-venule" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-venule" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('healthy-venule')"data-week={{week}} list-num="HV" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-healthy-venule">50</span></label>
+          <input type="range" id="z-slider-healthy-venule" min="1" max="101" value="50" data-section="healthy-venule">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-healthy-venule" src="/static/vessel/week{{ week }}/healthy_venule/merged.png" alt="Healthy Venule Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="healthy-venule" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="healthy-venule" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="healthy-venule" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/vessel/week{{ week }}/healthy_venule/week{{ week }}.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fibrotic Venule Section -->
+  <section class="week-detail-section">
+    <h2>Fibrotic Venule</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-fibrotic-venule">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-venule" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-venule" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-venule" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-venule" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('fibrotic-venule')"data-week={{week}} list-num="FV" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-fibrotic-venule">50</span></label>
+          <input type="range" id="z-slider-fibrotic-venule" min="1" max="101" value="50" data-section="fibrotic-venule">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-fibrotic-venule" src="/static/vessel/week{{ week }}/fibrotic_venule/merged.png" alt="Fibrotic Venule Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="fibrotic-venule" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="fibrotic-venule" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="fibrotic-venule" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/vessel/week{{ week }}/fibrotic_venule/week{{ week }}.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Healthy Arteriole Section -->
+  <section class="week-detail-section">
+    <h2>Healthy Arteriole</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-healthy-arteriole">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-arteriole" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-arteriole" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-arteriole" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="healthy-arteriole" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('healthy-arteriole')"data-week={{week}} list-num="HA" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-healthy-arteriole">50</span></label>
+          <input type="range" id="z-slider-healthy-arteriole" min="1" max="101" value="50" data-section="healthy-arteriole">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-healthy-arteriole" src="/static/vessel/week{{ week }}/healthy_arteriole/merged.png" alt="Healthy Arteriole Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="healthy-arteriole" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="healthy-arteriole" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="healthy-arteriole" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/vessel/week{{ week }}/healthy_arteriole/week{{ week }}.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fibrotic Arteriole Section -->
+  <section class="week-detail-section">
+    <h2>Fibrotic Arteriole</h2>
+    <div class="viewer-container">
+      <div class="viewer-item">
+        <h3>CZI Viewer</h3>
+        <div class="czi-viewer" id="viewer-fibrotic-arteriole">
+          <!-- Z-stack images will be loaded by JavaScript -->
+        </div>
+        <div class="viewer-controls">
+          <div class="channel-row">
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-arteriole" data-chan="1"> <span>Everything</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-arteriole" data-chan="2"> <span>GFP</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-arteriole" data-chan="3"> <span>aSMA</span></label>
+            <label><input type="checkbox" class="channel-cbx" data-section="fibrotic-arteriole" data-chan="4"> <span>DAPI</span></label>
+          </div>
+          <button class="download-image-btn" onclick="downloadCurrentView('fibrotic-arteriole')"data-week={{week}} list-num="FA" >Download</button>
+        </div>
+        <div class="z-slider">
+          <label class="z-slider-label">Z-Stack: <span id="z-value-fibrotic-arteriole">50</span></label>
+          <input type="range" id="z-slider-fibrotic-arteriole" min="1" max="101" value="50" data-section="fibrotic-arteriole">
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>PNG Viewer</h3>
+        <div class="png-viewer">
+          <img id="png-fibrotic-arteriole" src="/static/vessel/week{{ week }}/fibrotic_arteriole/merged.png" alt="Fibrotic Arteriole Merged">
+        </div>
+        <div class="viewer-controls">
+          <button class="png-viewer-btn active" data-section="fibrotic-arteriole" data-type="merged">Merged</button>
+          <button class="png-viewer-btn" data-section="fibrotic-arteriole" data-type="asma">aSMA</button>
+          <button class="png-viewer-btn" data-section="fibrotic-arteriole" data-type="gfp">GFP</button>
+        </div>
+      </div>
+      <div class="viewer-item">
+        <h3>Video</h3>
+        <div class="video-viewer">
+          <video controls>
+            <source src="/static/vessel/week{{ week }}/fibrotic_arteriole/week{{ week }}.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% endif %}
+
+  {% endif %}
+
+  <a href="{{ url_for('index') }}" class="back-button">← Back to overview</a>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const week = '{{ week }}';
+      
+      // Initialize sections based on week
+      if (week === '0') {
+        // Week 0 special handling
+        const section = {
+          'week0': {
+            processed: `/static/processed_detailed/week0/`,
+            naming: `week0_z{z}_ch{ch}.png`
+          }
+        };
+        initializeViewer('week0', section.week0);
+      } else {
+        // Week 1+ with KMC sections
+        const sections = {
+          'kmc1': {
+            processed: `/static/processed_detailed/week${week}/kmc1/`,
+            naming: `week${week}_kmc1_z{z}_ch{ch}.png`
+          },
+          'kmc2': {
+            processed: `/static/processed_detailed/week${week}/kmc2/`,
+            naming: `week${week}_kmc2_z{z}_ch{ch}.png`
+          },
+          'kmc3': {
+            processed: `/static/processed_detailed/week${week}/kmc3/`,
+            naming: `week${week}_kmc3_z{z}_ch{ch}.png`
+          }
+        };
+        
+        // Add vessel sections for weeks 1, 2, 3, 6
+        if (['1', '2', '3', '6'].includes(week)) {
+          sections['healthy-venule'] = {
+            processed: `/static/vessel_processed_detailed/week${week}/healthy_venule/`,
+            naming: `week${week}_healthy_venule_z{z}_ch{ch}.png`
+          };
+          sections['fibrotic-venule'] = {
+            processed: `/static/vessel_processed_detailed/week${week}/fibrotic_venule/`,
+            naming: `week${week}_fibrotic_venule_z{z}_ch{ch}.png`
+          };
+          sections['healthy-arteriole'] = {
+            processed: `/static/vessel_processed_detailed/week${week}/healthy_arteriole/`,
+            naming: `week${week}_healthy_arteriole_z{z}_ch{ch}.png`
+          };
+          sections['fibrotic-arteriole'] = {
+            processed: `/static/vessel_processed_detailed/week${week}/fibrotic_arteriole/`,
+            naming: `week${week}_fibrotic_arteriole_z{z}_ch{ch}.png`
+          };
+        }
+
+        // Initialize CZI viewers for each section
+        Object.keys(sections).forEach(sectionId => {
+          initializeViewer(sectionId, sections[sectionId]);
+        });
+      }
+
+      // Handle PNG viewer button clicks
+      const pngButtons = document.querySelectorAll('.png-viewer-btn');
+      pngButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          const section = this.getAttribute('data-section');
+          const imageType = this.getAttribute('data-type');
+          const img = document.getElementById(`png-${section}`);
+          
+          // Remove active class from all buttons in this section
+          document.querySelectorAll(`.png-viewer-btn[data-section="${section}"]`).forEach(btn => {
+            btn.classList.remove('active');
+          });
+          
+          // Add active class to clicked button
+          this.classList.add('active');
+          
+          if (img) {
+            let newSrc = '';
+            
+            if (section === 'week0') {
+              // Handle week 0 from 3d_images
+              newSrc = `/static/3d_images/week0/${imageType}/${imageType}.png`;
+            } else if (section.startsWith('healthy-')) {
+              // Handle healthy vessels from /static/vessel/ folders for weeks 1, 2, 3, 6
+              const sectionName = section.replace('healthy-', '');
+              if (['1', '2', '3', '6'].includes(week)) {
+                newSrc = `/static/vessel/week${week}/healthy_${sectionName}/${imageType}.png`;
+              } else {
+                // Fallback to overview for other weeks
+                newSrc = `/static/overview/healthy%20${sectionName}/${imageType}.png`;
+              }
+            } else if (section.startsWith('kmc')) {
+              // Handle kmc sections from 3d_images
+              newSrc = `/static/3d_images/week${week}/${section}/${imageType}/${imageType}.png`;
+            } else if (section === 'fibrotic-venule') {
+              // Handle fibrotic venule from vessel folder for weeks 1, 2, 3, 6
+              newSrc = `/static/vessel/week${week}/fibrotic_venule/${imageType}.png`;
+            } else if (section === 'fibrotic-arteriole') {
+              // Handle fibrotic arteriole from vessel folder for weeks 1, 2, 3, 6
+              newSrc = `/static/vessel/week${week}/fibrotic_arteriole/${imageType}.png`;
+            }
+            
+            img.src = newSrc;
+          }
+        });
+      });
+
+      function initializeViewer(sectionId, config) {
+        const viewer = document.getElementById(`viewer-${sectionId}`);
+        const zSlider = document.getElementById(`z-slider-${sectionId}`);
+        const zValue = document.getElementById(`z-value-${sectionId}`);
+        
+        if (!viewer || !zSlider || !zValue) return;
+
+        // Create image cache for smooth performance
+        const imageCache = new Map();
+        const preloadQueue = [];
+        let currentZ = parseInt(zSlider.value);
+        let isPreloading = false;
+
+        // Create channel images
+        for (let ch = 1; ch <= 4; ch++) {
+          const img = document.createElement('img');
+          img.className = 'chan-img';
+          img.id = `${sectionId}-ch${ch}`;
+          img.style.opacity = '0';
+          img.style.pointerEvents = 'none'; // Prevent image dragging
+          viewer.appendChild(img);
+        }
+
+        // Debounced update function for smooth slider movement
+        let updateTimeout;
+        function debouncedUpdate(z) {
+          clearTimeout(updateTimeout);
+          updateTimeout = setTimeout(() => {
+            updateImages(sectionId, z, config);
+          }, 8); // Faster response - 120fps potential
+        }
+
+        // Immediate update for real-time feedback with animation frame
+        function immediateUpdate(z) {
+          zValue.textContent = z;
+          currentZ = z;
+          
+          // Update images immediately if cached, otherwise debounce
+          let allCached = true;
+          for (let ch = 1; ch <= 4; ch++) {
+            const filename = config.naming.replace('{z}', z).replace('{ch}', ch);
+            const cacheKey = config.processed + filename;
+            if (!imageCache.has(cacheKey)) {
+              allCached = false;
+              break;
+            }
+          }
+          
+          if (allCached) {
+            // Use requestAnimationFrame for smoother updates
+            requestAnimationFrame(() => {
+              updateImages(sectionId, z, config);
+            });
+          } else {
+            debouncedUpdate(z);
+          }
+        }
+
+        // Handle Z-slider changes with smooth updates
+        zSlider.addEventListener('input', function() {
+          const z = parseInt(this.value);
+          immediateUpdate(z);
+          
+          // Preload nearby images for smoother experience
+          requestIdleCallback(() => {
+            preloadNearbyImages(z, config);
+          });
+        });
+
+        // Handle channel checkboxes
+        const checkboxes = document.querySelectorAll(`.channel-cbx[data-section="${sectionId}"]`);
+        checkboxes.forEach(checkbox => {
+          checkbox.addEventListener('change', function() {
+            const ch = this.getAttribute('data-chan');
+            const img = document.getElementById(`${sectionId}-ch${ch}`);
+            if (img) {
+              img.style.opacity = this.checked ? '1' : '0';
+            }
+          });
+        });
+
+        // Preload images around current position
+        function preloadNearbyImages(centerZ, config) {
+          if (isPreloading) return;
+          isPreloading = true;
+          
+          const range = 10; // Increased preload range for better caching
+          const minZ = Math.max(1, centerZ - range);
+          const maxZ = Math.min(101, centerZ + range);
+          
+          const imagesToPreload = [];
+          
+          for (let z = minZ; z <= maxZ; z++) {
+            for (let ch = 1; ch <= 4; ch++) {
+              const filename = config.naming.replace('{z}', z).replace('{ch}', ch);
+              const src = config.processed + filename;
+              
+              if (!imageCache.has(src)) {
+                imagesToPreload.push(src);
+              }
+            }
+          }
+          
+          // Preload images in larger batches for better performance
+          preloadImageBatch(imagesToPreload, 0, 8).finally(() => {
+            isPreloading = false;
+          });
+        }
+
+        // Efficient batch preloading with reduced delays
+        async function preloadImageBatch(urls, startIndex, batchSize) {
+          if (startIndex >= urls.length) return;
+          
+          const batch = urls.slice(startIndex, startIndex + batchSize);
+          const promises = batch.map(url => preloadSingleImage(url));
+          
+          await Promise.allSettled(promises);
+          
+          // Reduced delay between batches for faster loading
+          await new Promise(resolve => setTimeout(resolve, 20));
+          
+          return preloadImageBatch(urls, startIndex + batchSize, batchSize);
+        }
+
+        // Preload single image with caching
+        function preloadSingleImage(src) {
+          return new Promise((resolve) => {
+            if (imageCache.has(src)) {
+              resolve();
+              return;
+            }
+            
+            const img = new Image();
+            img.onload = () => {
+              imageCache.set(src, img);
+              resolve();
+            };
+            img.onerror = () => {
+              // Still resolve to continue batch processing
+              resolve();
+            };
+            img.src = src;
+          });
+        }
+
+        // Optimized image updating with caching
+        function updateImages(sectionId, z, config) {
+          for (let ch = 1; ch <= 4; ch++) {
+            const img = document.getElementById(`${sectionId}-ch${ch}`);
+            if (img) {
+              const filename = config.naming
+                .replace('{z}', z)
+                .replace('{ch}', ch);
+              const src = config.processed + filename;
+              
+              // Use cached image if available for instant loading
+              if (imageCache.has(src)) {
+                const cachedImg = imageCache.get(src);
+                img.src = cachedImg.src;
+              } else {
+                img.src = src;
+                // Cache this image for future use
+                preloadSingleImage(src);
+              }
+            }
+          }
+        }
+
+        // Initialize with default z-value and start aggressive preloading
+        immediateUpdate(currentZ);
+        
+        // Start aggressive preloading immediately for better UX
+        setTimeout(() => {
+          preloadNearbyImages(currentZ, config);
+          
+          // Also preload common z-positions for faster navigation
+          const commonPositions = [1, 25, 50, 75, 101];
+          commonPositions.forEach(z => {
+            if (z !== currentZ) {
+              setTimeout(() => {
+                for (let ch = 1; ch <= 4; ch++) {
+                  const filename = config.naming.replace('{z}', z).replace('{ch}', ch);
+                  const src = config.processed + filename;
+                  if (!imageCache.has(src)) {
+                    preloadSingleImage(src);
+                  }
+                }
+              }, z * 10); // Stagger the preloading
+            }
+          });
+        }, 100);
+      }
+
+      // Download function (placeholder)
+      window.downloadCurrentView = function(sectionId) {
+        console.log('Download requested for section:', sectionId);
+        // Implementation would capture current view and download
+      };
+    });
+
+    // Download popup functionality
+  document.querySelectorAll('.download-image-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      // Clear any existing popups first
+      document.querySelectorAll('.download-popup').forEach(p => p.remove());
+      
+      const week = btn.getAttribute('data-week');
+      const iter = btn.getAttribute('list-num')
+      const popup = document.createElement('div');
+      popup.className = 'download-popup';
+      popup.innerHTML = `
+        <button onclick="window.location='/download/detailweek${week}${iter}'">Download CZI</button>
+        <button onclick="window.location='/download/detailweektif${week}${iter}'">Download TIFF</button>
+        <button class='close-btn'>Cancel</button>
+      `;
+      
+      // Position and show the popup
+      btn.parentElement.style.position = 'relative';
+      btn.parentElement.appendChild(popup);
+      popup.style.display = 'flex';
+      
+      // Close popup when cancel is clicked
+      popup.querySelector('.close-btn').onclick = function() {
+        popup.remove();
+      };
+      
+      // Close popup when clicking outside
+      setTimeout(() => {
+        document.addEventListener('mousedown', function handler(ev) {
+          if (!popup.contains(ev.target) && ev.target !== btn) {
+            popup.remove();
+            document.removeEventListener('mousedown', handler);
+          }
+        });
+      }, 100);
+    });
+  });
+  </script>
+</body>
+</html>
