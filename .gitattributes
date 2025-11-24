@@ -71,3 +71,10 @@ static/vessel/week2/fibrotic_arteriole/week2.czi filter=lfs diff=lfs merge=lfs -
 static/vessel/week2/fibrotic_venule/week2.czi filter=lfs diff=lfs merge=lfs -text
 static/vessel/week2/healthy_arteriole/week2.czi filter=lfs diff=lfs merge=lfs -text
 static/vessel/week2/healthy_venule/week2.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week3/fibrotic_arteriole/week3.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week3/fibrotic_venule/week3.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week3/healthy_arteriole/week3.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week3/healthy_venule/week3.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week6/fibrotic_arteriole/week6.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week6/fibrotic_venule/week6.czi filter=lfs diff=lfs merge=lfs -text
+static/vessel/week6/healthy_arteriole/week6.czi filter=lfs diff=lfs merge=lfs -text
